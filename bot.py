@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8254834483:AAGXikQMaGCzyh1HuZh5B1iymo0BXYqtXF0")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7200936473"))
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003884329619"))
-MONETAG_SDK = os.environ.get("MONETAG_SDK", "show_10924924")
+MONETAG_SDK = os.environ.get("MONETAG_SDK", "show_10928306")
 PORT = int(os.environ.get("PORT", "8080"))
 BASE_URL = os.environ.get("BASE_URL", "")
 
