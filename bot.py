@@ -65,7 +65,7 @@ def get_ad_html(step: int, video_index: int) -> str:
 </head>
 <body>
   <div class="container">
-    <div class="logo">🎬 ScreenTime BD</div>
+    <div class="logo">🎬 Natok Hub</div>
     <div class="sub">ভিডিও লোড হচ্ছে...</div>
     <div id="adBox">
       <!-- Monetag Ad loads here -->
@@ -166,7 +166,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_video_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not video_list:
         await update.message.reply_text(
-            "🎬 *ScreenTime BD বটে স্বাগতম!*\n\n"
+            "🎬 *Natok Hub বটে স্বাগতম!*\n\n"
             "এখনো কোনো ভিডিও আপলোড হয়নি।\n"
             "শীঘ্রই আসছে! 🔜",
             parse_mode="Markdown"
@@ -183,7 +183,7 @@ async def show_video_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "🎬 *ScreenTime BD*\n\n"
+        "🎬 *Natok Hub*\n\n"
         "নিচের তালিকা থেকে ভিডিও সিলেক্ট করুন:",
         reply_markup=reply_markup,
         parse_mode="Markdown"
