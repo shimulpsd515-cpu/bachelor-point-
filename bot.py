@@ -25,6 +25,83 @@ DIRECT_LINK = "https://omg10.com/4/11025392"
 video_list = []
 
 
+def ad_page_html(step, video_index, bot_username):
+    if step == 1:
+        next_url = f"{BASE_URL}/ad?step=2&v={video_index}&bot={bot_username}"
+    else:
+        next_url = f"https://t.me/{bot_username}?start=done_{video_index}"
+
+    return f"""<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Natok Hub</title>
+  <style>
+    *{{margin:0;padding:0;box-sizing:border-box}}
+    body{{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:white;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}}
+    .card{{background:rgba(255,255,255,0.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:30px 20px;max-width:400px;width:95%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4)}}
+    .logo{{font-size:30px;font-weight:900;color:#00d4ff;margin-bottom:4px}}
+    .tagline{{font-size:13px;color:#aaa;margin-bottom:16px}}
+    .step-badge{{display:inline-block;background:rgba(0,212,255,0.2);border:1px solid #00d4ff;color:#00d4ff;border-radius:20px;padding:4px 14px;font-size:12px;margin-bottom:16px}}
+    .progress-bar{{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:14px;overflow:hidden}}
+    .progress-fill{{height:100%;background:#00d4ff;border-radius:3px;transition:width 1s linear}}
+    #timer{{font-size:56px;font-weight:900;color:#00d4ff;margin:8px 0;text-shadow:0 0 20px rgba(0,212,255,0.5)}}
+    #msg{{font-size:14px;color:#ccc;margin-bottom:14px}}
+    #continueBtn{{display:none;width:100%;padding:16px;background:linear-gradient(135deg,#00d4ff,#0099cc);color:#000;border:none;border-radius:30px;font-size:18px;font-weight:700;cursor:pointer;margin-top:10px}}
+    #continueBtn:active{{transform:scale(0.97)}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🎬 Natok Hub</div>
+    <div class="tagline">আপনার প্রিয় নাটক একটাই জায়গায়</div>
+    <div class="step-badge">ধাপ {step} / 2</div>
+    <div class="progress-bar"><div class="progress-fill" id="pf" style="width:100%"></div></div>
+    <div id="timer">15</div>
+    <div id="msg">অপেক্ষা করুন...</div>
+    <button id="continueBtn" onclick="goNext()">✅ Continue করুন →</button>
+  </div>
+  <script>
+    // Open direct link ad in new tab
+    window.open('{DIRECT_LINK}', '_blank');
+
+    let t = 15;
+    const tv = document.getElementById('timer');
+    const mv = document.getElementById('msg');
+    const bv = document.getElementById('continueBtn');
+    const pv = document.getElementById('pf');
+
+    const iv = setInterval(() => {{
+      t--;
+      tv.textContent = t;
+      pv.style.width = (t / 15 * 100) + '%';
+      if (t <= 0) {{
+        clearInterval(iv);
+        tv.style.display = 'none';
+        mv.style.display = 'none';
+        bv.style.display = 'block';
+      }}
+    }}, 1000);
+
+    function goNext() {{
+      bv.disabled = true;
+      bv.textContent = '⏳ লোড হচ্ছে...';
+      window.location.href = '{next_url}';
+    }}
+  </script>
+</body>
+</html>"""
+
+
+async def handle_ad(request):
+    step = int(request.rel_url.query.get("step", "1"))
+    video_index = int(request.rel_url.query.get("v", "0"))
+    bot_username = request.rel_url.query.get("bot", "")
+    html = ad_page_html(step, video_index, bot_username)
+    return web.Response(text=html, content_type="text/html")
+
+
 async def handle_health(request):
     return web.Response(text="Natok Hub Bot is running!")
 
@@ -67,32 +144,15 @@ async def button_handler(update, context):
 
     if data.startswith("watch_"):
         video_index = int(data.split("_")[1])
+        bot_username = (await context.bot.get_me()).username
+        ad_url = f"{BASE_URL}/ad?step=1&v={video_index}&bot={bot_username}"
         await query.edit_message_text(
-            "🎬 *ভিডিও পেতে ২টি ধাপ সম্পন্ন করুন*\n\n"
-            "👇 প্রথমে নিচের বাটনে ক্লিক করুন:",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("👉 ধাপ ১: এখানে ক্লিক করুন", url=DIRECT_LINK)],
-                [InlineKeyboardButton("✅ ধাপ ১ শেষ, এগিয়ে যান →", callback_data=f"step2_{video_index}")]
-            ]),
+            "⏳ *ভিডিও প্রস্তুত হচ্ছে...*\n\nনিচের বাটনে ক্লিক করুন:",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("👉 ভিডিও দেখুন", url=ad_url)
+            ]]),
             parse_mode="Markdown"
         )
-
-    elif data.startswith("step2_"):
-        video_index = int(data.split("_")[1])
-        await query.edit_message_text(
-            "✅ *ধাপ ১ সম্পন্ন!*\n\n"
-            "👇 এখন ধাপ ২ সম্পন্ন করুন:",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("👉 ধাপ ২: এখানে ক্লিক করুন", url=DIRECT_LINK)],
-                [InlineKeyboardButton("🎬 ভিডিও নিন →", callback_data=f"getvideo_{video_index}")]
-            ]),
-            parse_mode="Markdown"
-        )
-
-    elif data.startswith("getvideo_"):
-        video_index = int(data.split("_")[1])
-        await query.edit_message_text("✅ *ভিডিও পাঠানো হচ্ছে...*", parse_mode="Markdown")
-        await send_video_to_user(context, query.from_user.id, video_index)
 
 
 async def send_video_to_user(context, user_id, video_index):
@@ -166,6 +226,7 @@ async def admin_add(update, context):
 
 async def main():
     web_app = web.Application()
+    web_app.router.add_get("/ad", handle_ad)
     web_app.router.add_get("/", handle_health)
     web_app.router.add_get("/health", handle_health)
     runner = web.AppRunner(web_app)
