@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8254834483:AAGXikQMaGCzyh1HuZh5B1iymo0BXYqtXF0")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "7200936473"))
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003884329619"))
-MONETAG_SDK = os.environ.get("MONETAG_SDK", "show_10928306")
+MONETAG_SDK = os.environ.get("MONETAG_SDK", "show_10924924")
 PORT = int(os.environ.get("PORT", "8080"))
 BASE_URL = os.environ.get("BASE_URL", "")
 
@@ -66,7 +66,7 @@ def ad_page_html(step, video_index, bot_username):
     <button id="continueBtn" onclick="goNext()">✅ Continue করুন →</button>
   </div>
   <script>
-    (function(d,z,s){{s.src='https://'+d+'/401/'+z;try{{(document.body||document.documentElement).appendChild(s)}}catch(e){{}}}})(\'glizauvo.com\',\'{monetag_id}\',document.createElement(\'script\'));
+    (function(s){{s.dataset.zone='11025353';s.src='https://nap5k.com/tag.min.js';}})(([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script'))));
     let t=15;
     const tv=document.getElementById('timer'),mv=document.getElementById('msg'),bv=document.getElementById('continueBtn'),pv=document.getElementById('pf');
     const iv=setInterval(()=>{{t--;tv.textContent=t;pv.style.width=(t/15*100)+'%';if(t<=0){{clearInterval(iv);tv.style.display='none';mv.style.display='none';bv.style.display='block';}}}},1000);
