@@ -63,8 +63,11 @@ def ad_page_html(step, video_index, bot_username):
     <button id="continueBtn" onclick="goNext()">✅ Continue করুন →</button>
   </div>
   <script>
-    // Open direct link ad in new tab
-    window.open('{DIRECT_LINK}', '_blank');
+    // Load ad in hidden iframe (works in mobile/Telegram)
+    const iframe = document.createElement('iframe');
+    iframe.src = '{DIRECT_LINK}';
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
+    document.body.appendChild(iframe);
 
     let t = 15;
     const tv = document.getElementById('timer');
@@ -78,6 +81,7 @@ def ad_page_html(step, video_index, bot_username):
       pv.style.width = (t / 15 * 100) + '%';
       if (t <= 0) {{
         clearInterval(iv);
+        iframe.remove();
         tv.style.display = 'none';
         mv.style.display = 'none';
         bv.style.display = 'block';
