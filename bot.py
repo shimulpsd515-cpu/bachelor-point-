@@ -153,7 +153,7 @@ async def button_handler(update, context):
         await query.edit_message_text(
             "⏳ *ভিডিও প্রস্তুত হচ্ছে...*\n\nনিচের বাটনে ক্লিক করুন:",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("👉 ভিডিও দেখুন", url=ad_url)
+                InlineKeyboardButton("👉 ভিডিও পাবেন এখানে চাপ দিন", url=ad_url)
             ]]),
             parse_mode="Markdown"
         )
@@ -168,7 +168,7 @@ async def send_video_to_user(context, user_id, video_index):
         await context.bot.forward_message(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
         await context.bot.send_message(
             user_id,
-            f"✅ *{caption}*\n\nউপরের ভিডিওটি দেখুন বা ডাউনলোড করুন! 🎬",
+            f"✅ *{caption}*\n\nনতুন ভিডিও দেখতে আবার উপরে /start.ক্লিক করুন 🎬",
             parse_mode="Markdown"
         )
     except TelegramError as e:
