@@ -58,7 +58,7 @@ def ad_page_html(step, video_index, bot_username):
     <div class="tagline">আপনার প্রিয় নাটক একটাই জায়গায়</div>
     <div class="step-badge">ধাপ {step} / 2</div>
     <div class="progress-bar"><div class="progress-fill" id="pf" style="width:100%"></div></div>
-    <div id="timer">15</div>
+    <div id="timer">5</div>
     <div id="msg">অপেক্ষা করুন...</div>
     <button id="continueBtn" onclick="goNext()">✅ Continue করুন →</button>
   </div>
@@ -69,7 +69,7 @@ def ad_page_html(step, video_index, bot_username):
     iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
     document.body.appendChild(iframe);
 
-    let t = 15;
+    let t = 5;
     const tv = document.getElementById('timer');
     const mv = document.getElementById('msg');
     const bv = document.getElementById('continueBtn');
@@ -78,7 +78,7 @@ def ad_page_html(step, video_index, bot_username):
     const iv = setInterval(() => {{
       t--;
       tv.textContent = t;
-      pv.style.width = (t / 15 * 100) + '%';
+      pv.style.width = (t / 5 * 100) + '%';
       if (t <= 0) {{
         clearInterval(iv);
         iframe.remove();
