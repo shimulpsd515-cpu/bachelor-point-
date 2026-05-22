@@ -168,7 +168,7 @@ async def send_video_to_user(context, user_id, video_index):
         await context.bot.forward_message(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
         await context.bot.send_message(
             user_id,
-            f"✅ *{caption}*\n\nনতুন ভিডিও দেখতে আবার উপরে /start.ক্লিক করুন 🎬",
+            f"✅ *{caption}*\n\nনতুন ভিডিও/অন্য বাকিগুলা দেখতে আবারে /start.ক্লিক করুন 🎬",
             parse_mode="Markdown"
         )
     except TelegramError as e:
