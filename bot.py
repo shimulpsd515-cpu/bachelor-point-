@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -23,6 +24,12 @@ BASE_URL = os.environ.get("BASE_URL", "")
 DIRECT_LINK = "https://omg10.com/4/11025392"
 
 video_list = []
+SESSION_TIMEOUT_HOURS = 2
+
+# ✅ User tracker — সব user এখানে রাখা হবে
+# { user_id: {"last_active": datetime, "message_ids": [], "name": ""} }
+user_sessions = {}
+all_users = {}  # কখনো delete হবে না — total count এর জন্য
 
 
 def ad_page_html(step, video_index, bot_username):
@@ -63,18 +70,15 @@ def ad_page_html(step, video_index, bot_username):
     <button id="continueBtn" onclick="goNext()">✅ Continue করুন →</button>
   </div>
   <script>
-    // Load ad in hidden iframe (works in mobile/Telegram)
     const iframe = document.createElement('iframe');
     iframe.src = '{DIRECT_LINK}';
     iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;';
     document.body.appendChild(iframe);
-
     let t = 5;
     const tv = document.getElementById('timer');
     const mv = document.getElementById('msg');
     const bv = document.getElementById('continueBtn');
     const pv = document.getElementById('pf');
-
     const iv = setInterval(() => {{
       t--;
       tv.textContent = t;
@@ -87,7 +91,6 @@ def ad_page_html(step, video_index, bot_username):
         bv.style.display = 'block';
       }}
     }}, 1000);
-
     function goNext() {{
       bv.disabled = true;
       bv.textContent = '⏳ লোড হচ্ছে...';
@@ -110,41 +113,116 @@ async def handle_health(request):
     return web.Response(text="Natok Hub Bot is running!")
 
 
+# ✅ User track করার function
+def track_user(user_id, message_id, name=""):
+    # সব user এর record রাখি
+    if user_id not in all_users:
+        all_users[user_id] = {"name": name, "joined": datetime.now()}
+
+    # Active session track
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {"last_active": datetime.now(), "message_ids": []}
+    user_sessions[user_id]["last_active"] = datetime.now()
+    user_sessions[user_id]["message_ids"].append(message_id)
+
+
+# ✅ ২ ঘন্টা পরে auto reset
+async def auto_reset_task(bot):
+    while True:
+        await asyncio.sleep(1800)  # ৩০ মিনিট পরপর চেক
+        now = datetime.now()
+        timeout = timedelta(hours=SESSION_TIMEOUT_HOURS)
+
+        for user_id, data in list(user_sessions.items()):
+            if now - data["last_active"] >= timeout:
+                try:
+                    # পুরনো message delete করো
+                    for msg_id in data["message_ids"]:
+                        try:
+                            await bot.delete_message(chat_id=user_id, message_id=msg_id)
+                        except Exception:
+                            pass
+
+                    # নতুন বাটন পাঠাও
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text="🔄 *সেশন শেষ হয়েছে!*\n\nনতুন ভিডিও দেখতে নিচের বাটনে চাপ দিন 👇",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🎬 ভিডিও লিস্ট দেখুন", callback_data="refresh_list")
+                        ]])
+                    )
+                    del user_sessions[user_id]
+                    logger.info(f"✅ Reset: {user_id}")
+
+                except TelegramError as e:
+                    logger.error(f"Reset error {user_id}: {e}")
+
+
 async def start(update, context):
     args = context.args
+    user = update.effective_user
+    user_id = user.id
+    name = user.full_name or ""
+
     if args and args[0].startswith("done_"):
         try:
             video_index = int(args[0].split("_")[1])
-            await update.message.reply_text("✅ সম্পন্ন! ভিডিও পাঠানো হচ্ছে...")
-            await send_video_to_user(context, update.effective_user.id, video_index)
+            sent = await update.message.reply_text("✅ সম্পন্ন! ভিডিও পাঠানো হচ্ছে...")
+            track_user(user_id, sent.message_id, name)
+            await send_video_to_user(context, user_id, video_index)
         except (ValueError, IndexError):
             await show_video_list(update, context)
         return
+
     await show_video_list(update, context)
 
 
 async def show_video_list(update, context):
+    user = update.effective_user
+    user_id = user.id
+    name = user.full_name or ""
+
     if not video_list:
-        await update.message.reply_text(
+        sent = await update.message.reply_text(
             "🎬 *Natok Hub বটে স্বাগতম!*\n\nএখনো কোনো ভিডিও আপলোড হয়নি।\nশীঘ্রই আসছে! 🔜",
             parse_mode="Markdown"
         )
+        track_user(user_id, sent.message_id, name)
         return
+
     keyboard = []
     for i, (msg_id, caption) in enumerate(video_list):
         short = caption[:45] + "..." if len(caption) > 45 else caption
         keyboard.append([InlineKeyboardButton(f"🎬 {short}", callback_data=f"watch_{i}")])
-    await update.message.reply_text(
+
+    sent = await update.message.reply_text(
         "🎬 *Natok Hub*\n\nনিচের তালিকা থেকে নাটক সিলেক্ট করুন:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
+    track_user(user_id, sent.message_id, name)
 
 
 async def button_handler(update, context):
     query = update.callback_query
     await query.answer()
     data = query.data
+
+    if data == "refresh_list":
+        if not video_list:
+            await query.edit_message_text("এখনো কোনো ভিডিও নেই। পরে আসুন!")
+            return
+        keyboard = []
+        for i, (msg_id, caption) in enumerate(video_list):
+            short = caption[:45] + "..." if len(caption) > 45 else caption
+            keyboard.append([InlineKeyboardButton(f"🎬 {short}", callback_data=f"watch_{i}")])
+        await query.edit_message_text(
+            "🎬 *Natok Hub*\n\nনিচের তালিকা থেকে নাটক সিলেক্ট করুন:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        return
 
     if data.startswith("watch_"):
         video_index = int(data.split("_")[1])
@@ -165,12 +243,18 @@ async def send_video_to_user(context, user_id, video_index):
         return
     msg_id, caption = video_list[video_index]
     try:
-        await context.bot.forward_message(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
-        await context.bot.send_message(
+        fwd = await context.bot.forward_message(
+            chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id
+        )
+        track_user(user_id, fwd.message_id)
+
+        sent = await context.bot.send_message(
             user_id,
-            f"✅ *{caption}*\n\nনতুন ভিডিও/অন্য বাকিগুলা দেখতে আবারে /start.ক্লিক করুন 🎬",
+            f"✅ *{caption}*\n\nনতুন ভিডিও/অন্য বাকিগুলা দেখতে আবারে /start ক্লিক করুন 🎬",
             parse_mode="Markdown"
         )
+        track_user(user_id, sent.message_id)
+
     except TelegramError as e:
         logger.error(f"Forward error: {e}")
         await context.bot.send_message(user_id, "⚠️ ভিডিও পাঠাতে সমস্যা হয়েছে।")
@@ -228,6 +312,29 @@ async def admin_add(update, context):
         await update.message.reply_text("⚠️ সঠিক message_id দিন।")
 
 
+# ✅ নতুন /stats কমান্ড — শুধু admin দেখতে পাবে
+async def admin_stats(update, context):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    total = len(all_users)
+    active_now = len(user_sessions)
+    now = datetime.now()
+    last_1h = sum(
+        1 for d in user_sessions.values()
+        if now - d["last_active"] <= timedelta(hours=1)
+    )
+
+    text = (
+        f"📊 *বট স্ট্যাটিস্টিক্স*\n\n"
+        f"👥 মোট User: *{total}* জন\n"
+        f"🟢 এখন Active Session: *{active_now}* জন\n"
+        f"⏱ শেষ ১ ঘন্টায় Active: *{last_1h}* জন\n"
+        f"🎬 মোট ভিডিও: *{len(video_list)}* টি"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
 async def main():
     web_app = web.Application()
     web_app.router.add_get("/ad", handle_ad)
@@ -243,14 +350,23 @@ async def main():
     bot_app.add_handler(CommandHandler("list", admin_list))
     bot_app.add_handler(CommandHandler("clear", admin_clear))
     bot_app.add_handler(CommandHandler("addvideo", admin_add))
+    bot_app.add_handler(CommandHandler("stats", admin_stats))  # ✅ নতুন
     bot_app.add_handler(CallbackQueryHandler(button_handler))
     bot_app.add_handler(MessageHandler(
         filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL),
         channel_post_handler
     ))
+
     await bot_app.initialize()
     await bot_app.start()
-    await bot_app.updater.start_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+
+    # ✅ Background task
+    asyncio.create_task(auto_reset_task(bot_app.bot))
+
+    await bot_app.updater.start_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True
+    )
     logger.info("Bot started!")
 
     try:
